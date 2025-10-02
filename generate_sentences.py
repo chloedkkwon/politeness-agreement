@@ -63,7 +63,7 @@ def generate_sentence_dict():
                     "subject": plain_subj,
                     "verb_phrase": hon_vp,
                     "target_phrase": hon_vp,
-                    "grammatical": False,
+                    "grammatical": True,
                     "mask_char_pos": len(sentence) - 3
                 })
                 
@@ -76,7 +76,7 @@ def generate_sentence_dict():
                     "subject": hon_subj,
                     "verb_phrase": plain_vp,
                     "target_phrase": plain_vp,
-                    "grammatical": True,
+                    "grammatical": False,
                     "mask_char_pos": len(sentence) - 3
                 })
                 
