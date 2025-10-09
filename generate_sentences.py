@@ -49,7 +49,7 @@ def generate_sentence_dict():
                     "sentence": sentence,
                     "subject": plain_subj, 
                     "verb_phrase": plain_vp,
-                    "target_phrase": plain_vp,
+                    "target_phrase": plain_vp.split()[1],
                     "grammatical": True,
                     "mask_char_pos": len(sentence) - 3
                 })
@@ -62,7 +62,11 @@ def generate_sentence_dict():
                     "sentence": sentence,
                     "subject": plain_subj,
                     "verb_phrase": hon_vp,
+<<<<<<< HEAD
                     "target_phrase": hon_vp,
+=======
+                    "target_phrase": hon_vp.split()[1],
+>>>>>>> e7e146d (commit oct-9-2025)
                     "grammatical": True,
                     "mask_char_pos": len(sentence) - 3
                 })
@@ -75,7 +79,11 @@ def generate_sentence_dict():
                     "sentence": sentence,
                     "subject": hon_subj,
                     "verb_phrase": plain_vp,
+<<<<<<< HEAD
                     "target_phrase": plain_vp,
+=======
+                    "target_phrase": plain_vp.split()[1],
+>>>>>>> e7e146d (commit oct-9-2025)
                     "grammatical": False,
                     "mask_char_pos": len(sentence) - 3
                 })
@@ -88,7 +96,7 @@ def generate_sentence_dict():
                     "sentence": sentence,
                     "subject": hon_subj,
                     "verb_phrase": hon_vp,
-                    "target_phrase": hon_vp,
+                    "target_phrase": hon_vp.split()[1],
                     "grammatical": True,
                     "mask_char_pos": len(sentence) - 2
                 })

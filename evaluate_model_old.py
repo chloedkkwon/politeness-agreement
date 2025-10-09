@@ -14,8 +14,6 @@ class ModelEvaluator:
         self.models = {}
         self.tokenizers = {}
         self.model_types = {} # masked (bert) vs. causal
-        self.tokens = {}
-
         self.device = self._setup_device(device)
         self.load_models()
 
@@ -32,21 +30,21 @@ class ModelEvaluator:
             "bert-kor-base": {
                 "path": "kykim/bert-kor-base", 
                 "type": "bert", 
-                "model_class": AutoModelForMaskedLM
-            },
-            "koelectra-base":{
-                "path": "monologg/koelectra-base-generator",
-                "type": "bert",
-                "model_class": AutoModelForMaskedLM
-            },
+                "model_class": AutoModelForMaskedLM}}
+        #     },
+        #     "koelectra-base":{
+        #         "path": "monologg/koelectra-base-generator",
+        #         "type": "bert",
+        #         "model_class": AutoModelForMaskedLM
+        #     },
 
-            # Causual LM models
-            "gemma": {
-                "path": "google/gemma-3-270m",
-                "type": "causal", 
-                "model_class": AutoModelForCausalLM
-            }
-        }
+        #     # Causual LM models
+        #     "gemma": {
+        #         "path": "google/gemma-3-270m",
+        #         "type": "causal", 
+        #         "model_class": AutoModelForCausalLM
+        #     }
+        # }
 
         for name, config in model_configs.items(): 
             try:
@@ -81,7 +79,7 @@ class ModelEvaluator:
                 if self.device.type == 'cpu' or 'device_map' not in model_kwargs:
                     self.models[name] = self.models[name].to(self.device)
 
-                # # For debugging - Verify mask token for BERT models
+                # # Verify mask token for BERT models
                 # if config['type'] == 'bert':
                 #     print(f"  Mask token: {self.tokenizers[name].mask_token} (id={self.tokenizers[name].mask_token_id})")
                 
@@ -91,22 +89,6 @@ class ModelEvaluator:
                 import traceback
                 traceback.print_exc()
 
-    # Handling tokenization
-    def save_token_cache(self, filepath: str = 'token_cache.pkl'):
-        """Save the tokenization info as a pickle file"""
-        import pickle
-        with open(filepath, 'wb') as f:
-            pickle.dump(self.tokens, f)
-        print(f"Token cache saved to {filepath}")
-
-    def load_token_cache(self, filepath: str = 'token_cache.pkl'):
-        import pickle
-        try:
-            with open(filepath, 'rb') as f:
-                self.tokens = pickle.load(f)
-        except FileNotFoundError:
-            print(f"No cache file found at {filepath}")
-
     @lru_cache(maxsize=1000)
     def tokenize_with_cache(self, text: str, model_name: str) -> Tuple[List[str], List[int]]:
         """Caches the tokenization results for faster processing"""
@@ -115,14 +97,12 @@ class ModelEvaluator:
         token_ids = tokenizer.encode(text, add_special_tokens=True)
         return tokens, token_ids
     
-    def find_target_phrase_token(self, model_name: str, 
-                                 sentence: str, 
-                                 target_phrase: str) -> Optional[Tuple[int, int, List[str]]]:
+    def find_target_phrase_token(self, model_name: str, sentence: str, target_phrase: str) -> Optional[Tuple[int, int, List[str]]]:
         tokenizer = self.tokenizers[model_name]
 
         # Use cached tokenization
         sentence_tokens, _ = self.tokenize_with_cache(sentence, model_name) # the whole sentence
-        target_tokens, _ = self.tokenize_with_cache(target_phrase, model_name) # target (e.g., "말했다", "말하셨다")
+        target_tokens, _ = self.tokenize_with_cache(target_phrase, model_name) # target phrase (the verb phrase)
 
         if not target_tokens:
             return None
@@ -133,7 +113,7 @@ class ModelEvaluator:
                 return (i+1, i+1+len(target_tokens), target_tokens) # +1 for [CLS]
         
         # Fuzzy matching if no exact match
-        # This is becauze tokenization is context-sensitive for causal LM
+        # This is becauze tokenization is context-sensitive
         return self.fuzzy_find_target_phrase(model_name, sentence, target_phrase, 
                                             sentence_tokens, target_tokens)
     
@@ -197,15 +177,10 @@ class ModelEvaluator:
 
         return len(tokens_with_special) - 1 # returns the last token index if no match is found
 
-    # Sentence probability
     @torch.no_grad()
     def get_sentence_probability_bert(self, model_name: str, sentence: str) -> float:
         tokenizer = self.tokenizers[model_name]
         model = self.models[model_name]
-
-        token_probs = []
-        token_strings = []
-        cache_key = f"{model_name}::{sentence}"
 
         _, token_ids = self.tokenize_with_cache(sentence, model_name)
         tokens = torch.tensor([token_ids], device=self.device)
@@ -226,11 +201,6 @@ class ModelEvaluator:
             log_probs = F.log_softmax(outputs.logits[0, i], dim=-1)
             total_log_prob += log_probs[original_token].item()
             content_tokens += 1
-
-            token_probs.append(total_log_prob)
-            token_strings.append(tokenizer.convert_ids_to_tokens([original_token])[0])
-
-        self.tokens[cache_key] = {'sentence': sentence, 'model': model, 'tokens': token_strings, 'token_probs': token_probs}
         
         return total_log_prob / content_tokens if content_tokens > 0 else 0.0
 
@@ -249,15 +219,12 @@ class ModelEvaluator:
             outputs = model(tokens, labels=tokens)
             print(f"DEBUG: Loss: {outputs.loss.item()}")
 
-            return -outputs.loss.item() # avg log prob per token
-        
+            return -outputs.loss.item()
         except Exception as e:
             print(f"Error in causal probability for {model_name}: {e}")
             return float('nan')
 
-    def get_target_phrase_probability(self, model_name: str, 
-                                      sentence: str, 
-                                      target_phrase: str) -> float:
+    def get_target_phrase_probability(self, model_name: str, sentence: str, target_phrase: str) -> float:
         target_info = self.find_target_phrase_token(model_name, sentence, target_phrase)
         print(target_info)
         if not target_info:
@@ -270,7 +237,6 @@ class ModelEvaluator:
         else:
             return self.get_target_phrase_prob_causal(model_name, sentence, start_idx, end_idx)
 
-    # Target phrase probability
     @torch.no_grad()
     def get_target_phrase_prob_bert(self, model_name: str, sentence: str, start_idx: int, end_idx: int) -> float:
         tokenizer = self.tokenizers[model_name]
@@ -324,8 +290,7 @@ class ModelEvaluator:
             print(f"Error in causal target phrase prob for {model_name}: {e}")
             return float('nan')        
  
-    # Surprisal
-    def get_surprisal(self, model_name: str, sentence: str,
+    def get_surprisal_after_mask(self, model_name: str, sentence: str,
                                  mask_char_pos: int) -> float:
         mask_token_pos = self.char_to_token_positions(model_name, sentence, mask_char_pos)
 
@@ -380,34 +345,6 @@ class ModelEvaluator:
             print(f"Error in causal surprisal for {model_name}: {e}")
             return float('nan')
 
-    def get_probability_of_target_without_mask(self, model_name: str, sentence: str, token_position: int) -> float:
-        tokenizer = self.tokenizers[model_name]
-        model = self.models[model_name]
-
-        try:
-            _, token_ids = self.tokenize_with_cache(sentence, model_name)
-            tokens = torch.tensor([token_ids], device=self.device)
-
-            outputs = model(tokens)
-            logits = outputs.logits
-
-            probs = F.softmax(logits[0], dim=1)
-
-            total_log_prob = 0.0
-            num_tokens = 0
-
-            for i in range(tokens.shape[1]):
-                actual_token_id = tokens[0, i].item()
-                token_prob = probs[i, actual_token_id].item()
-                total_log_prob += np.log(token_prob) if token_prob > 0 else -float('inf')
-                num_tokens += 1
-
-            return total_log_prob / num_tokens if num_tokens > 0 else 0.0
-
-        except Exception as e:
-            print(f"Error in calculating the target probability of bert")
-            return 0.0
-
     def evaluate_batch(self, test_data: List[Dict], batch_size: int = 8) -> pd.DataFrame:
         results = []
 
@@ -435,7 +372,7 @@ class ModelEvaluator:
 
                         surprisal = None
                         if mask_char_pos is not None:
-                            surprisal = self.get_surprisal(model_name, sentence, mask_char_pos)
+                            surprisal = self.get_surprisal_after_mask(model_name, sentence, mask_char_pos)
 
                         results.append({
                             "condition": condition,
@@ -562,8 +499,6 @@ def main():
         'surprisal_after_mask': 'mean'
     }).round(4)
     print(summary)
-
-    evaluator.save_token_cache('data/token_cache.pkl')
 
     evaluator.clear_cache()
 
