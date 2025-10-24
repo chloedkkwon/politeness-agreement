@@ -33,6 +33,8 @@ def generate_sentence_dict():
         "close": "{} {} {}.", # adv at beginning
         "far": "{1} {0} {2}." # adv in middle
     }
+    
+    item_number = 1  # initialize item number
 
     for distance, template in templates.items():
         for subj_pair in subjects:
@@ -44,6 +46,7 @@ def generate_sentence_dict():
                 # Condition 1: No honorific
                 sentence = template.format(adverb, plain_subj, plain_vp)
                 test_data.append({
+                    "item_number": item_number,
                     "condition": "no_honorific",
                     "distance": distance,
                     "sentence": sentence,
@@ -57,6 +60,7 @@ def generate_sentence_dict():
                 # Condition 2: Verb only
                 sentence = template.format(adverb, plain_subj, hon_vp)
                 test_data.append({
+                    "item_number": item_number,
                     "condition": "verb_only",
                     "distance": distance,
                     "sentence": sentence,
@@ -74,6 +78,7 @@ def generate_sentence_dict():
                 # Condition 3: Noun only
                 sentence = template.format(adverb, hon_subj, plain_vp)
                 test_data.append({
+                    "item_number": item_number,
                     "condition": "noun_only",
                     "distance": distance,
                     "sentence": sentence,
@@ -91,6 +96,7 @@ def generate_sentence_dict():
                 # Condition 4: All honorific
                 sentence = template.format(adverb, hon_subj, hon_vp)
                 test_data.append({
+                    "item_number": item_number,
                     "condition": "all_honorific",
                     "distance": distance,
                     "sentence": sentence,
