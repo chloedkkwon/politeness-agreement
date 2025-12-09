@@ -3,7 +3,8 @@ import numpy as np
 from setup_model import ModelSetup
 from process_text import TextProcessor
 from calculate_proba import ProbaCalculator
-
+import torch
+import gc # for cache clearing
 
 class ModelEvaluator:
     def __init__(self, device = "auto"):
@@ -13,7 +14,7 @@ class ModelEvaluator:
     
     @property
     def models(self):
-        return self.model_setup.models
+        return self.model_setup.get_available_models()
     
     @property
     def model_types(self):
@@ -23,16 +24,23 @@ class ModelEvaluator:
         results = []
         
         # Group by model to minimize model switching overhead
-        for model_name in self.models.keys():
+        for model_name in self.models:
             print(f"\nEvaluating with {model_name}...")
+
+            model, tokenizer = self.model_setup.load_model(model_name)
             
             for i in range(0, len(test_data), batch_size):
                 batch = test_data[i:i+batch_size]
                 
                 for item in batch:
+                    item_number = item["item_number"]
                     sentence = item["sentence"]
                     target_phrase = item["target_phrase"]
                     condition = item["condition"]
+                    distance = item["distance"]
+                    subject = item["subject"]
+                    verb_phrase = item["verb_phrase"]
+                    grammatical = item["grammatical"]
 
                     target_info = self.text_processor.find_target_phrase_token(model_name, sentence, target_phrase)
                     start_idx, end_idx, target_tokens = target_info
@@ -54,7 +62,9 @@ class ModelEvaluator:
                             surprisal_at_target = self.probability_calculator.get_surprisal_causal_at_target(model_name, sentence, start_idx, end_idx)
                         
                         results.append({
+                            "item_number": item_number,
                             "condition": condition,
+                            "distance": distance,
                             "model": model_name, 
                             "sentence": sentence,
                             "target_phrase": target_phrase,
@@ -62,13 +72,18 @@ class ModelEvaluator:
                             "avg_sentence_prob_without_mask": avg_prob_without_mask,
                             "target_phrase_prob_with_mask": target_prob_with_mask,
                             "target_phrase_prob_without_mask": target_prob_without_mask,
-                            "surprisal_at_target": surprisal_at_target
+                            "surprisal_at_target": surprisal_at_target,
+                            "subject": subject, 
+                            "verb_phrase": verb_phrase,
+                            "grammatical": grammatical
                         })
                     
                     except Exception as e:
                         print(f"Error evaluating {sentence} with {model_name}: {e}")
                         results.append({
+                            "item_number": item_number,
                             "condition": condition,
+                            "distance": distance,
                             "model": model_name,
                             "sentence": sentence,
                             "target_phrase": target_phrase, 
@@ -76,8 +91,23 @@ class ModelEvaluator:
                             "avg_sentence_prob_without_mask": None,
                             "target_phrase_prob_with_mask": None,
                             "target_phrase_prob_without_mask": None,
-                            "surprisal_at_target": None
+                            "surprisal_at_target": None,
+                            "subject": subject, 
+                            "verb_phrase": verb_phrase,
+                            "grammatical": grammatical
                         })
+            print(f"Unloading {model_name}...")
+            self.model_setup.unload_model(model_name)
+
+            del model
+            del tokenizer
+
+            gc.collect()
+            torch.cuda.empty_cache()
+
+            print(f"Memory after unloading:")
+            self.model_setup.get_memory_usage()
+
         return pd.DataFrame(results)
     
     def save_token_cache(self, filepath='token_cache.pkl'):
@@ -88,34 +118,6 @@ class ModelEvaluator:
     
     def clear_cache(self):
         self.text_processor.clear_cache()
-
-def sanity_check_proba(evaluator):
-    """Run sanity checks on probability calculations"""
-    test_cases = {
-        "very_common": "내일 할게.",
-        "grammatical": "선생님께서 책을 읽으셨다.",
-        "ungrammatical": "선생님께서 책을 읽었다.",
-        "random_tokens": "가나다라마바사아자차카타파하."
-    }
-    
-    print("\n---SANITY CHECKS---")
-    for model_name in evaluator.models.keys():
-        print(f"\nModel: {model_name}")
-        probs = {}
-        for label, sentence in test_cases.items():
-            if evaluator.model_types[model_name] == "bert":
-                prob = evaluator.probability_calculator.get_sentence_probability_bert(model_name, sentence)
-            else:
-                prob = evaluator.probability_calculator.get_sentence_probability_causal(model_name, sentence)
-            probs[label] = prob
-            print(f" {label:20s}: {prob:.4f}")
-        # Check expectations
-        print(f"\n  Checks:")
-        print(f"    ✓ Very common > Random? {probs['very_common'] > probs['random_tokens']}")
-        print(f"    ✓ Grammatical > Ungrammatical? {probs['grammatical'] > probs['ungrammatical']}")
-        print(f"    ✓ No NaN values? {not any(np.isnan(p) for p in probs.values())}")
-        print(f"    ✓ No Inf values? {not any(np.isinf(p) for p in probs.values())}")
-
 
 def load_csv(filename):
     df = pd.read_csv(filename, encoding='utf-8')
@@ -128,16 +130,6 @@ def load_csv(filename):
 def main():
     print("Initializing the model evaluator...")
     evaluator = ModelEvaluator()
-    
-    print("\nChecking loaded models:")
-    for name, model in evaluator.models.items():
-        print(f"  {name}: {type(model)} - Type: {evaluator.model_types[name]}")
-    
-    sanity_check_proba(evaluator)
-    
-    # # Create sample data (for debugging)
-    # test_data = create_sample_data()
-    
     test_data = load_csv('data/sentences.csv')
     
     # Run batch evaluation
