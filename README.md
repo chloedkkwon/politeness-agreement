@@ -84,7 +84,7 @@ By measuring sentence probabilities and surprisal values, we can quantify whethe
 ### Requirements
 
 ```bash
-pip install torch transformers pandas numpy huggingface_hub --break-system-packages
+pip install -r requirements.txt
 ```
 
 ### HuggingFace Authentication
@@ -309,7 +309,7 @@ If you use this code in your research, please cite:
 ## Acknowledgments
 
 This project uses models from:
-- Kiyoung Kim (bert-kor-base): \url{https://github.com/kiyoungkim1/LMkor}
+- Kiyoung Kim (bert-kor-base): https://github.com/kiyoungkim1/LMkor
 - Jangwon Park (KoELECTRA): https://github.com/monologg/KoELECTRA
 - Google (GEMMA): https://huggingface.co/google/gemma-3-1b-it
 - Upstage (SOLAR): https://huggingface.co/upstage/SOLAR-10.7B-v1.0
