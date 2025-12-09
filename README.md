@@ -151,7 +151,7 @@ results = evaluator.evaluate_batch(test_data, batch_size=8)
 results.to_csv('my_results.csv', index=False)
 ```
 
-## Core Components
+## Main Components
 
 ### ModelSetup (`setup_model.py`)
 
@@ -164,12 +164,6 @@ setup = ModelSetup(device="auto", hf_token="your_token")
 model, tokenizer = setup.load_model("bert-kor-base")
 setup.unload_model("bert-kor-base")
 ```
-
-**Key Methods:**
-- `load_model(model_name)`: Load a specific model
-- `unload_model(model_name)`: Unload and free memory
-- `get_available_models()`: List all configured models
-- `get_memory_usage()`: Display GPU memory usage
 
 ### TextProcessor (`process_text.py`)
 
@@ -238,12 +232,6 @@ from evaluate import ModelEvaluator
 evaluator = ModelEvaluator(device="auto")
 results_df = evaluator.evaluate_batch(test_data, batch_size=8)
 ```
-
-**Features:**
-- Automatic model switching
-- Memory management with cache clearing
-- Progress tracking
-- Error handling with graceful degradation
 
 ## Output Format
 
@@ -321,7 +309,7 @@ If you use this code in your research, please cite:
 ## Acknowledgments
 
 This project uses models from:
-- Kyubyong Park (bert-kor-base)
+- Kiyoung Kim (bert-kor-base)
 - Monologg (KoELECTRA)
 - Google (GEMMA)
 - Upstage (SOLAR)
