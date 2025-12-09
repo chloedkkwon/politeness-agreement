@@ -1,4 +1,4 @@
-# Korean Honorific Language Model Evaluation
+# Large Language Model Evaluation: Korean Honorific Agreement
 
 This project offers a comprehensive framework for evaluating how language models handle Korean honorific agreement (존댓말) by computing probabilities, surprisal values, and analyzing grammaticality judgments across multiple transformer-based models.
 
@@ -297,7 +297,7 @@ If you use this code in your research, please cite:
 ```bibtex
 @software{korean_honorific_eval,
   author = {Kwon, Chloe D., Cho, Youngdong},
-  title = {Korean Honorific Language Model Evaluation},
+  title = {Large Language Model Evaluation: Korean Honorific Agreement},
   year = {2024},
   publisher = {GitHub},
   journal = {GitHub repository},
