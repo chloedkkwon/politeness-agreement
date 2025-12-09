@@ -309,10 +309,10 @@ If you use this code in your research, please cite:
 ## Acknowledgments
 
 This project uses models from:
-- Kiyoung Kim (bert-kor-base)
-- Monologg (KoELECTRA)
-- Google (GEMMA)
-- Upstage (SOLAR)
-- Meta (Llama)
-- EleutherAI (Polyglot)
-- SK Telecom (KoGPT3)
+- Kiyoung Kim (bert-kor-base): \url{https://github.com/kiyoungkim1/LMkor}
+- Jangwon Park (KoELECTRA): https://github.com/monologg/KoELECTRA
+- Google (GEMMA): https://huggingface.co/google/gemma-3-1b-it
+- Upstage (SOLAR): https://huggingface.co/upstage/SOLAR-10.7B-v1.0
+- Meta (Llama): https://huggingface.co/meta-llama/Llama-3.2-1B
+- EleutherAI (Polyglot): https://huggingface.co/EleutherAI/polyglot-ko-1.3b
+- SK Telecom (KoGPT3): https://huggingface.co/skt/ko-gpt-trinity-1.2B-v0.5
