@@ -1,6 +1,6 @@
-# Large Language Model Evaluation: Korean Honorific Agreement
+# Large Language Model Evaluation: Korean Honorific Dependency
 
-This project offers a comprehensive framework for evaluating how language models handle Korean honorific agreement (존댓말) by computing probabilities, surprisal values, and analyzing grammaticality judgments across multiple transformer-based models.
+This project offers a comprehensive framework for evaluating how language models handle Korean honorific dependency (존댓말) by computing probabilities, surprisal values, and analyzing grammaticality judgments across multiple transformer-based models.
 
 ## Overview
 
