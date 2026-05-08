@@ -297,7 +297,7 @@ If you use this code in your research, please cite:
 ```bibtex
 @software{korean_honorific_eval,
   author = {Kwon, Chloe D., Cho, Youngdong},
-  title = {Large Language Model Evaluation: Korean Honorific Agreement},
+  title = {Large Language Model Evaluation: Korean Honorific Dependency},
   year = {2024},
   publisher = {GitHub},
   journal = {GitHub repository},
