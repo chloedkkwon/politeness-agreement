@@ -145,9 +145,6 @@ class TextProcessor:
             if token_char_start == token_char_end and i > 0:
                 continue
             
-            # A token is part of the target phrase if its character range overlaps
-            # Overlap occurs when: token_start < target_end AND token_end > target_start
-            # We use <= for char_start to include tokens that START at target position
             has_overlap = (token_char_start < char_end and token_char_end > char_start)
             
             # Also explicitly check if this token contains the start of the target

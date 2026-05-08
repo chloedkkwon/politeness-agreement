@@ -33,35 +33,48 @@ class ModelEvaluator:
                 batch = test_data[i:i+batch_size]
                 
                 for item in batch:
+                    exp_idx = item["exp_idx"]
                     item_number = item["item_number"]
                     sentence = item["sentence"]
                     target_phrase = item["target_phrase"]
                     condition = item["condition"]
                     distance = item["distance"]
                     subject = item["subject"]
+                    subject_marker = item["subject_marker"]
                     verb_phrase = item["verb_phrase"]
                     grammatical = item["grammatical"]
-
-                    target_info = self.text_processor.find_target_phrase_token(model_name, sentence, target_phrase)
-                    start_idx, end_idx, target_tokens = target_info
+                    match = item["match"]
                     
                     try:
+                        target_info = self.text_processor.find_target_phrase_token(model_name, sentence, target_phrase)
+                        start_idx, end_idx, target_tokens = target_info
+
+                        marker_info = self.text_processor.find_target_phrase_token(model_name, sentence, subject_marker)
+                        marker_start_idx, marker_end_idx, marker_tokens = marker_info
                         # Calculate
                         if self.model_types[model_name] == "bert":
                             avg_prob_with_mask = self.probability_calculator.get_sentence_probability_bert(model_name, sentence)
                             avg_prob_without_mask = self.probability_calculator.get_sentence_probability_bert_without_mask(model_name, sentence)
                             target_prob_with_mask = self.probability_calculator.get_target_phrase_prob_bert(model_name, sentence, start_idx, end_idx)
                             target_prob_without_mask = self.probability_calculator.get_target_phrase_prob_bert_without_mask(model_name, sentence, start_idx, end_idx)
+                            surprisal_at_marker = self.probability_calculator.get_surprisal_bert_at_target(model_name, sentence, marker_start_idx, marker_end_idx)
                             surprisal_at_target = self.probability_calculator.get_surprisal_bert_at_target(model_name, sentence, start_idx, end_idx)
-                        
+                            sentence_surprisal_with_mask = self.probability_calculator.get_sentence_surprisal_bert(model_name, sentence)
+                            sentence_surprisal_without_mask = self.probability_calculator.get_sentence_surprisal_bert_without_mask(model_name, sentence)
+
                         else:
                             avg_prob_with_mask = None
                             avg_prob_without_mask = self.probability_calculator.get_sentence_probability_causal(model_name, sentence)
                             target_prob_with_mask = None
                             target_prob_without_mask = self.probability_calculator.get_target_phrase_prob_causal(model_name, sentence, start_idx, end_idx)
+                            surprisal_at_marker = self.probability_calculator.get_surprisal_causal_at_target(model_name, sentence, marker_start_idx, marker_end_idx)
                             surprisal_at_target = self.probability_calculator.get_surprisal_causal_at_target(model_name, sentence, start_idx, end_idx)
-                        
+                            
+                            sentence_surprisal_with_mask = None
+                            sentence_surprisal_without_mask = self.probability_calculator.get_sentence_surprisal_causal(model_name, sentence)
+
                         results.append({
+                            "exp_idx": exp_idx,
                             "item_number": item_number,
                             "condition": condition,
                             "distance": distance,
@@ -72,15 +85,21 @@ class ModelEvaluator:
                             "avg_sentence_prob_without_mask": avg_prob_without_mask,
                             "target_phrase_prob_with_mask": target_prob_with_mask,
                             "target_phrase_prob_without_mask": target_prob_without_mask,
+                            "surprisal_at_marker": surprisal_at_marker,
                             "surprisal_at_target": surprisal_at_target,
+                            "avg_sentence_surprisal_with_mask": sentence_surprisal_with_mask,
+                            "avg_sentence_surprisal_without_mask": sentence_surprisal_without_mask,
                             "subject": subject, 
+                            "subject_marker": subject_marker,
                             "verb_phrase": verb_phrase,
+                            "match": match,
                             "grammatical": grammatical
                         })
                     
                     except Exception as e:
                         print(f"Error evaluating {sentence} with {model_name}: {e}")
                         results.append({
+                            "exp_idx": exp_idx,
                             "item_number": item_number,
                             "condition": condition,
                             "distance": distance,
@@ -91,9 +110,12 @@ class ModelEvaluator:
                             "avg_sentence_prob_without_mask": None,
                             "target_phrase_prob_with_mask": None,
                             "target_phrase_prob_without_mask": None,
+                            "surprisal_at_marker": None,
                             "surprisal_at_target": None,
                             "subject": subject, 
+                            "subject_marker": subject_marker,
                             "verb_phrase": verb_phrase,
+                            "match": match,
                             "grammatical": grammatical
                         })
             print(f"Unloading {model_name}...")
@@ -120,25 +142,28 @@ class ModelEvaluator:
         self.text_processor.clear_cache()
 
 def load_csv(filename):
-    df = pd.read_csv(filename, encoding='utf-8')
+    df = pd.read_csv(filename, encoding='utf-8-sig')
     if 'grammatical' in df.columns:
-        df['grammatical'] = df['grammatical'].astype(str).str.lower() == 'true'
+        df['grammatical'] = df['grammatical'].apply(
+            lambda x: None if pd.isna(x) else (str(x).lower() == 'true')
+        )
     test_data = df.to_dict('records')
     return test_data
 
 
 def main():
     print("Initializing the model evaluator...")
-    evaluator = ModelEvaluator()
-    test_data = load_csv('data/sentences.csv')
+    evaluator = ModelEvaluator(device="cpu")
+    #test_data = load_csv('data/sentences.csv')
+    test_data = load_csv('data/sentences_allExp.csv')
     
     # Run batch evaluation
     print("Running evaluation...")
-    results_df = evaluator.evaluate_batch(test_data, batch_size=8)
+    results_df = evaluator.evaluate_batch(test_data, batch_size=4)
     
     # Save results
-    output_file = "data/results_evaluation.csv"
-    results_df.to_csv(output_file, index=False, encoding="utf-8")
+    output_file = "data/results_evaluation_allExp.csv"
+    results_df.to_csv(output_file, index=False, encoding="utf-8-sig")
     print(f"Results saved to {output_file}")
     
     # Display summary
@@ -146,6 +171,7 @@ def main():
     summary = results_df.groupby(['model', 'condition']).agg({
         'avg_sentence_prob_without_mask': 'mean',
         'target_phrase_prob_without_mask': 'mean', 
+        'surprisal_at_marker': 'mean',
         'surprisal_at_target': 'mean'
     }).round(4)
     print(summary)

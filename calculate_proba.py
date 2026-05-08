@@ -333,6 +333,174 @@ class ProbaCalculator:
     
     # Surprisal
     @torch.no_grad()
+    def get_sentence_surprisal_bert(self, model_name, sentence):
+        """
+        Calculate average surprisal across the entired sentence using BERT with masking
+        Surprisal = -log_2(P(token|context))
+
+        Returns: Average surprisal in bits
+        """
+        print(f"[{model_name}]: Calculating sentence surprisal (BERT): {sentence}")
+        tokenizer = self.tokenizers[model_name]
+        model = self.models[model_name]
+
+        cache_key = f"{model_name}::{sentence}::surprisal"
+        _, token_ids = self.text_processor.tokenize_with_cache(sentence, model_name)
+        tokens = torch.tensor([token_ids], device=self.device)
+
+        print(f"\tToken shape: {tokens.shape}")
+
+        if tokens.shape[1] <= 2:
+            print('\t\tWarning: Sentence contains only special tokens')
+            return 0.0
+
+        total_surprisal = 0.0
+        content_tokens = 0
+        token_surprisals = []
+        token_strings = []
+
+        for i in range(1, tokens.shape[1]-1): # skip [CLS] and [SEP]
+            masked_tokens = tokens.clone()
+            original_token = masked_tokens[0, i].item()
+            masked_tokens[0, i] = tokenizer.mask_token_id
+
+            outputs = model(masked_tokens)
+            log_probs = F.log_softmax(outputs.logits[0, i], dim=-1)
+            token_log_prob = log_probs[original_token].item()
+
+            surprisal = -token_log_prob / np.log(2)
+            total_surprisal += surprisal
+            content_tokens += 1
+
+            token_surprisals.append(surprisal)
+            token_strings.append(tokenizer.convert_ids_to_tokens([original_token])[0])
+
+        print(f"\tTokens used for calculating: {token_strings}")
+        print(f"\tSurprisals: {[f'{s:.3f}' for s in token_surprisals]}")
+
+        self.tokens[cache_key] = {
+            'sentence': sentence,
+            'model': model_name, 
+            'tokens': token_strings,
+            'token_surprisals': token_surprisals
+        }
+
+        surprisal_out = total_surprisal / content_tokens if content_tokens > 0 else 0.0
+        print(f"\tAveraged Surprisal: {surprisal_out:.3f} bits")
+        return surprisal_out
+
+    @torch.no_grad()
+    def get_sentence_surprisal_bert_without_mask(self, model_name, sentence):
+        print(f"[{model_name}]: Calculating sentence surprisal without mask (BERT): {sentence}")
+        tokenizer = self.tokenizers[model_name]
+        model = self.models[model_name]
+
+        cache_key = f"{model_name}::{sentence}::surprisal_no_mask"
+        _, token_ids = self.text_processor.tokenize_with_cache(sentence, model_name)
+        tokens = torch.tensor([token_ids], device=self.device)
+        
+        print(f"\tToken shape: {tokens.shape}")
+        
+        outputs = model(tokens)
+        logits = outputs.logits
+        print(f"\tOutput logits shape: {logits.shape}")
+
+        log_probs = F.log_softmax(logits[0], dim=-1)
+        
+        total_surprisal = 0.0
+        num_tokens = 0
+        token_surprisals = []
+        token_strings = []
+        
+        for i in range(1, tokens.shape[1] - 1):  # skip CLS & SEP
+            actual_token_id = tokens[0, i].item()
+            token_log_prob = log_probs[i, actual_token_id].item()
+            
+            # Surprisal in bits
+            surprisal = -token_log_prob / np.log(2)
+            total_surprisal += surprisal
+            num_tokens += 1
+
+            token_surprisals.append(surprisal)
+            token_strings.append(tokenizer.convert_ids_to_tokens([actual_token_id])[0])
+        
+        print(f"\tTokens used for calculating: {token_strings}")
+        print(f"\tSurprisals: {[f'{s:.3f}' for s in token_surprisals]}")
+        
+        self.tokens[cache_key] = {
+            'sentence': sentence,
+            'model': model_name,
+            'tokens': token_strings,
+            'token_surprisals': token_surprisals
+        }
+        
+        surprisal_out = total_surprisal / num_tokens if num_tokens > 0 else 0.0
+        print(f"\tAveraged Surprisal: {surprisal_out:.3f} bits")
+        return surprisal_out
+
+    @torch.no_grad()
+    def get_sentence_surprisal_causal(self, model_name, sentence):
+        """
+        Calculate average surprisal across the entire sentence using causal LM.
+        Surprisal = -log_2(P(token_i | token_1...token_i-1))
+        
+        Returns:
+            Average surprisal in bits
+        """
+        print(f"[{model_name}]: Calculating sentence surprisal (causal): {sentence}")
+        tokenizer = self.tokenizers[model_name]
+        model = self.models[model_name]
+
+        cache_key = f"{model_name}::{sentence}::surprisal"
+        _, token_ids = self.text_processor.tokenize_with_cache(sentence, model_name)
+        tokens = torch.tensor([token_ids], device=self.device)
+
+        # Auto-computed using cross-entropy loss
+        outputs = model(tokens, labels=tokens)
+        # Loss is negative log probability (natural log), convert to bits
+        surprisal_auto = outputs.loss.item() / np.log(2)
+        
+        print(f"\tToken shape (auto-computed): {tokens.shape}")
+        print(f"\tAveraged Surprisal (auto-computed): {surprisal_auto:.3f} bits")
+
+        # Manually computed (for debugging and detailed output)
+        outputs = model(tokens)
+        logits = outputs.logits[0]
+
+        total_surprisal = 0.0
+        content_tokens = 0
+        token_surprisals = []
+        token_strings = []
+        
+        for i in range(tokens.shape[1] - 1):
+            next_token_id = tokens[0, i + 1].item()
+            log_probs = F.log_softmax(logits[i], dim=-1)
+            token_log_prob = log_probs[next_token_id].item()
+            
+            # Surprisal in bits
+            surprisal = -token_log_prob / np.log(2)
+            total_surprisal += surprisal
+            content_tokens += 1
+
+            token_surprisals.append(surprisal)
+            token_strings.append(tokenizer.convert_ids_to_tokens([next_token_id])[0])
+
+        print(f"\tTokens used for calculating (manually-computed): {token_strings}")
+        print(f"\tSurprisals (manually-computed): {[f'{s:.3f}' for s in token_surprisals]}")
+
+        surprisal_manual = total_surprisal / content_tokens if content_tokens > 0 else 0.0
+        print(f"\tAveraged Surprisal (manually-computed): {surprisal_manual:.3f} bits")
+
+        self.tokens[cache_key] = {
+            'sentence': sentence,
+            'model': model_name,
+            'tokens': token_strings,
+            'token_surprisals': token_surprisals
+        }
+
+        return surprisal_auto
+
+    @torch.no_grad()
     def get_surprisal_bert_at_target(self, model_name, sentence, start_idx, end_idx):
         """
         1. For each token in the target phrase range, get log probability of that token after masking
