@@ -21,36 +21,25 @@ Korean honorifics (존댓말, jondaenmal) are a grammatical system that expresse
   - Honorific: 읽**으셨다** "read-HON-PAST"
 
 **Honorific Agreement:**
+In the Korean honorific system, subject and verb honorifics (as well as objects) tend to show **dependency**. That is, when a subject is marked with the honorific marker `-께서`, the verb must carry the honorific marker `-시-`. However, this relation is asymmetric; the verb honorific marker `-시-` does not require the subject honorific marker `-께서`, as shown in Example (2). 
 
-The textbook description of the Korean honorific system is that subject and verb honorifics (as well as objects) should show **agreement** relations. That is, when a subject is marked with the honorific particle `-께서`, the verb must also carry the honorific marker `-시-`:
-
-✅ **Grammatical (both plain):**
+(1) ✅ **Grammatical (both plain):**
 - 선생님**이** 책을 읽**었다**
 - "The teacher read a book" (neutral)
 
-✅ **Grammatical (verb honorific only, acceptable with plain subjects):**
+(2) ✅ **Grammatical (verb honorific only, acceptable with plain subjects):**
 - 선생님**이** 책을 읽**으셨다**
 - "The teacher read a book" (polite)
 
-❌ **Ungrammatical (subject honorific without verb honorific):**
+(3) ❌ **Ungrammatical (subject honorific without verb honorific):**
 - \*선생님**께서** 책을 읽**었다**
 - "The teacher-HON read a book" (missing verb honorific)
 
-✅ **Grammatical (both honorific):**
+(4) ✅ **Grammatical (both honorific):**
 - 선생님**께서** 책을 읽**으셨다**
 - "The teacher-HON read-HON a book" (fully respectful)
 
-This agreement pattern creates a grammatical dependency between the subject and verb that language models must learn to respect. The key insight is that honorific marking on the subject (-께서) obligatorily requires honorific marking on the verb (-시-), making the noun_only condition ungrammatical.
-
-**Why This Matters for Language Models:**
-
-Testing honorific agreement in Korean provides insights into whether language models learn:
-1. **Long-distance dependencies**: The subject and verb can be separated by multiple words
-2. **Morphosyntactic agreement**: Models must track morphological features across syntactic positions
-3. **Grammaticality distinctions**: Models should assign lower probabilities to ungrammatical constructions
-4. **Language-specific constraints**: Korean honorifics are not present in most training data languages
-
-By measuring sentence probabilities and surprisal values, we can quantify whether models have internalized these grammatical constraints or are merely capturing surface-level patterns.
+By measuring sentence probabilities and surprisal values, we can quantify whether language models have internalized these dependency relations or are merely capturing surface-level patterns.
 
 ## Supported Models
 
