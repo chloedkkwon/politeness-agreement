@@ -9,13 +9,16 @@ from huggingface_hub import login
 import os
 
 class ModelSetup:
-    def __init__(self, device="auto", hf_token=None): 
+    def __init__(self, device="auto", hf_token="huggingface_token"): 
         self.models = {}
         self.tokenizers = {}
         self.model_types = {}
         self.tokens = {}
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if device == "auto":
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        else:
+            self.device = torch.device(device)
 
         self.setup_huggingface_auth(hf_token)
         # self.load_models()
