@@ -205,11 +205,13 @@ For BERT models:
 - `target_phrase_prob_with_mask`: Target phrase log probability with masking
 - `target_phrase_prob_without_mask`: Target phrase log probability without masking
 - `surprisal_at_target`: Average surprisal (in bits) at target phrase
+- `surprisal_at_marker`: Average surprisal (in bits) at the subject honorific marker
 
 For causal models:
 - `avg_sentence_prob_without_mask`: Average log probability
 - `target_phrase_prob_without_mask`: Target phrase log probability
 - `surprisal_at_target`: Average surprisal (in bits) at target phrase
+- `surprisal_at_marker`: Average surprisal (in bits) at the subject honorific marker
 
 ### ModelEvaluator (`evaluate.py`)
 
