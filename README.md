@@ -22,7 +22,7 @@ Korean honorifics (존댓말, jondaenmal) are a grammatical system that expresse
 
 **Honorific Agreement:**
 
-Korean requires **grammatical agreement** between subject and verb honorifics. When a subject is marked with the honorific particle `-께서`, the verb must also carry the honorific marker `-시-`:
+The textbook description of the Korean honorific system is that subject and verb honorifics (as well as objects) should show **agreement** relations. That is, when a subject is marked with the honorific particle `-께서`, the verb must also carry the honorific marker `-시-`:
 
 ✅ **Grammatical (both plain):**
 - 선생님**이** 책을 읽**었다**
